@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LexForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-name">LEXFORGE</div>
+      <div class="brand-tag">Gemini Flash Lite · Privacy-First</div>
+    </div>
+    <div class="nav">
+      <div class="nav-label">Agents</div>
+      <div class="nav-item lawyer active" id="navLawyer" onclick="switchMode('lawyer')">
+        <div class="nav-dot d-lawyer"></div> Lawyer Agent
+      </div>
+      <div class="nav-item code" id="navCode" onclick="switchMode('code')">
+        <div class="nav-dot d-code"></div> Coding Agent
+      </div>
+      <div class="nav-label" style="margin-top:16px">System</div>
+      <div class="nav-item">
+        <div class="nav-dot d-gray"></div> Privacy Guard
+      </div>
+    </div>
+    <div class="privacy-guard">
+      <div class="pg-label"><div class="pg-dot"></div> LOCAL REDACTION ON</div>
+      <div class="pg-text">PII (names, phones, IBANs, addresses) stripped server-side via Presidio before Gemini sees any data.</div>
+    </div>
+  </div>
+
+
+  <div class="main">
+
+    <!-- CONFIG BAR -->
+    <div class="config-bar">
+      <div class="config-label">Backend URL</div>
+      <input class="config-input" id="backendUrl" value="http://localhost:8000" placeholder="http://localhost:8000"/>
+      <button class="config-save" onclick="saveUrl()">Set</button>
+      <span id="urlStatus" style="font-family:var(--mono);font-size:9px;color:var(--muted2)"></span>
+    </div>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="tab-row">
+        <div class="tab active-lawyer" id="tabLawyer" onclick="switchMode('lawyer')">Lawyer</div>
+        <div class="tab" id="tabCode" onclick="switchMode('code')">Code</div>
+      </div>
+      <div class="model-tag">
+        <div class="model-gem"></div>
+        gemini-flash-lite-latest
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="workspace" id="workspace">
+
+        <!-- LAWYER WORKSPACE -->
+        <div id="lawyerWS">
+          <div class="section-head animate-in d1">Contract Analysis</div>
+
+          <div class="error-box" id="lawyerError"></div>
+
+          <!-- Upload -->
+          <div class="upload-zone animate-in d2" id="lawyerDrop"
+               onclick="document.getElementById('lawyerFile').click()"
+               ondragover="dragOver(event,'lawyerDrop')"
+               ondragleave="dragLeave('lawyerDrop')"
+               ondrop="dropFile(event,'lawyerDrop','lawyerFile',runLawyer)">
+            <div class="upload-icon-wrap" id="lawyerIcon">⚖️</div>
+            <div class="upload-title">Drop Contract Here</div>
+            <div class="upload-sub">or click to browse</div>
+            <div class="fmt-row">
+              <span class="fmt">PDF</span><span class="fmt">TXT</span>
+            </div>
+            <div class="processing-overlay" id="lawyerOverlay">
+              <div class="spin" id="lawyerSpin"></div>
+              <div class="proc-text">Redacting PII → Analyzing with Gemini...</div>
+            </div>
+          </div>
+          <input type="file" id="lawyerFile" accept=".pdf,.txt" onchange="handleFile(this,runLawyer)"/>
+
+          <!-- Redaction notice -->
+          <div class="redact-box" id="redactBox">
+            <div class="redact-header">
+              <div class="redact-title">🛡 Privacy Guard — PII Scrubbed (Server-Side)</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted2)">Presidio Analyzer</div>
+            </div>
+            <div class="redact-tags">
+              <div class="rtag">PERSON</div>
+              <div class="rtag">PHONE_NUMBER</div>
+              <div class="rtag">EMAIL</div>
+              <div class="rtag">IBAN_CODE</div>
+              <div class="rtag">LOCATION</div>
+            </div>
+          </div>
+
+          <!-- Scorecard -->
+          <div class="scorecard" id="scorecard">
+            <div class="section-head">Risk Scorecard</div>
+            <div class="score-grid">
+              <div class="score-card" id="scRisk">
+                <div class="sc-label">Risk Score</div>
+                <div class="sc-val" id="scRiskVal">—</div>
+                <div class="sc-sub" id="scRiskSub">—</div>
+              </div>
+              <div class="score-card sc-warn">
+                <div class="sc-label">Total Risks</div>
+                <div class="sc-val" id="scTotal">—</div>
+                <div class="sc-sub">Flagged Clauses</div>
+              </div>
+              <div class="score-card sc-safe">
+                <div class="sc-label">Fixes Available</div>
+                <div class="sc-val" id="scFixes">—</div>
+                <div class="sc-sub">Suggestions</div>
+              </div>
+            </div>
+
+            <div class="section-head">Flagged Clauses</div>
+            <div class="risk-list" id="riskList"></div>
+
+            <div class="fixes-section" id="fixesSection">
+              <div class="fixes-title">Recommended Fixes</div>
+              <div id="fixesList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CODE WORKSPACE -->
+        <div id="codeWS" class="code-workspace">
+          <div class="section-head animate-in d1">Code Fixer</div>
+
+          <div class="error-box" id="codeError"></div>
+
+          <div class="file-drop-zone animate-in d2" id="codeDrop"
+               onclick="document.getElementById('codeFile').click()"
+               ondragover="dragOver(event,'codeDrop')"
+               ondragleave="dragLeave('codeDrop')"
+               ondrop="dropFile(event,'codeDrop','codeFile',runCoder)">
+            <div class="upload-icon-wrap code-mode">🛠️</div>
+            <div class="upload-title">Drop Code File</div>
+            <div class="upload-sub">Gemini will analyze & fix it</div>
+            <div class="fmt-row">
+              <span class="fmt">.py</span><span class="fmt">.js</span>
+              <span class="fmt">.cpp</span><span class="fmt">.java</span><span class="fmt">.txt</span>
+            </div>
+          </div>
+          <input type="file" id="codeFile" accept=".py,.js,.cpp,.java,.txt" onchange="handleFile(this,runCoder)"/>
+
+          <div class="section-head">Agent Log</div>
+          <div class="agent-log" id="agentLog">
+            <div class="log-line"><span class="lt">--:--:--</span><span class="lk-sys">Waiting for file upload...</span></div>
+          </div>
+
+          <div class="code-result" id="codeResult">
+            <div class="cr-header">
+              <div class="cr-title">✓ File Fixed & Saved</div>
+              <div class="cr-file" id="crFile">—</div>
+            </div>
+            <div class="code-preview" id="codePreview">—</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">
+        <div class="rp-head">
+          <span>System Status</span>
+          <div class="rp-status"><div class="rp-status-dot"></div><span style="color:var(--muted2)">Online</span></div>
+        </div>
+        <div class="info-cards">
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="ic-label">Model</div>
+              <div class="ic-val" style="font-size:10px;color:var(--muted2)">flash-lite</div>
+            </div>
+            <div class="info-card">
+              <div class="ic-label">PII Guard</div>
+              <div class="ic-val green">ON</div>
+            </div>
+            <div class="info-card">
+              <div class="ic-label">Max File</div>
+              <div class="ic-val yellow" style="font-size:14px">5 MB</div>
+            </div>
+            <div class="info-card">
+              <div class="ic-label">Retries</div>
+              <div class="ic-val" style="font-size:14px">3×</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="how-it-works">
+          <div class="how-title" id="howTitle">How Lawyer Agent Works</div>
+          <div id="howSteps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">Upload your <strong>PDF or TXT</strong> contract (max 5 MB)</div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text"><strong>Presidio</strong> redacts PII on the server before Gemini sees anything</div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text"><strong>Gemini Flash Lite</strong> identifies predatory clauses, hidden fees & liability traps</div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">Risk Scorecard renders with <strong>severity levels</strong> and actionable fixes</div>
+            </div>
+          </div>
+
+          <div id="howStepsCode" style="display:none">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div class="step-text">Upload any <strong>.py .js .cpp .java</strong> code file</div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div class="step-text"><strong>Gemini</strong> analyzes the code and generates the fix</div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div class="step-text">Fixed file is <strong>saved to /workspace</strong> on the server via function calling</div>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <div class="step-text">Agent log shows real-time <strong>[FIX] [SAVE]</strong> events</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js" defer></script>
+</body>
+</html>

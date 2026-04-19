@@ -1,30 +1,45 @@
-/frontend
-/test.py
-# OS generated files
-.DS_Store
-Thumbs.db
-*.swp
+# -----------------------
+# Python
+# -----------------------
+__pycache__/
+*.pyc
 
-# IDEs and Editors
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
+# Virtual environments
+venv/
+.venv/
 
-# Logs and databases
-*.log
-*.sqlite
-
+# -----------------------
 # Environment variables (SENSITIVE)
+# -----------------------
 .env
 .env.local
 .env.*.local
 
-node_modules/
-venv/
-.venv/
+# -----------------------
+# OS files
+# -----------------------
+.DS_Store
+Thumbs.db
 
-__pycache__/
-*.pyc
-.venv/
-.env
+# -----------------------
+# Editors / IDEs
+# -----------------------
+.vscode/
+.idea/
+
+# -----------------------
+# Logs & temp files
+# -----------------------
+*.log
+*.sqlite
+*.swp
+
+# -----------------------
+# Node (if used)
+# -----------------------
+node_modules/
+
+# -----------------------
+# Optional: workspace (if you DON'T want generated files in git)
+# -----------------------
+workspace/

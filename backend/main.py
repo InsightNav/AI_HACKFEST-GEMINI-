@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+
 import PyPDF2
 import io
 import time
@@ -8,29 +10,49 @@ from redactor import redact_text, restore_text_deep
 from agents.lawyer import analyze_contract
 from agents.coder import fix_code
 
+
 load_dotenv()
 
 app = FastAPI()
 
 
-# ---------- PDF EXTRACTION ----------
+# ─────────────────────────────
+# CORS Configuration
+# ─────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # open for hackathon usage
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─────────────────────────────
+# PDF Extraction
+# ─────────────────────────────
 def extract_pdf_text(file_bytes: bytes) -> str:
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-        return "\n".join(
+        text = [
             page.extract_text() or ""
             for page in reader.pages
-        ).strip()
-    except:
+        ]
+        return "\n".join(text).strip()
+    except Exception:
         return ""
 
 
-# ---------- CONTRACT ANALYSIS ----------
+# ─────────────────────────────
+# Contract Analysis Endpoint
+# ─────────────────────────────
 @app.post("/analyze-contract")
 async def analyze_contract_api(file: UploadFile = File(...)):
     try:
-        if not file.filename.lower().endswith((".pdf", ".txt")):
-            return {"error": "Only PDF or TXT allowed"}
+        filename = file.filename.lower()
+
+        if not filename.endswith((".pdf", ".txt")):
+            return {"error": "Only PDF or TXT files are supported"}
 
         content = await file.read()
 
@@ -46,18 +68,18 @@ async def analyze_contract_api(file: UploadFile = File(...)):
                     "risks": [{
                         "clause": "EMPTY_DOCUMENT",
                         "issue": "No readable text found",
-                        "severity": "High"
+                        "severity": "High",
                     }],
-                    "fixes": []
+                    "fixes": [],
                 },
-                "processing_time": 0
+                "processing_time": 0,
             }
 
         redacted_text, mapping = redact_text(raw_text)
 
-        start = time.time()
+        start_time = time.time()
         result = analyze_contract(redacted_text)
-        processing_time = round(time.time() - start, 2)
+        processing_time = round(time.time() - start_time, 2)
 
         result = restore_text_deep(result, mapping)
 
@@ -69,18 +91,22 @@ async def analyze_contract_api(file: UploadFile = File(...)):
 
         return {
             "result": result,
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
     except Exception as e:
         return {"error": str(e)}
 
 
-# ---------- CODE FIXING ----------
+# ─────────────────────────────
+# Code Fixing Endpoint
+# ─────────────────────────────
 @app.post("/fix-code")
 async def fix_code_api(file: UploadFile = File(...)):
     try:
-        if not file.filename.lower().endswith((".py", ".js", ".cpp", ".java", ".txt")):
+        filename = file.filename.lower()
+
+        if not filename.endswith((".py", ".js", ".cpp", ".java", ".txt")):
             return {"error": "Unsupported file type"}
 
         content = await file.read()
